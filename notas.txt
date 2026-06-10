@@ -1,0 +1,20 @@
+Crear entorno virtual
+python -m venv .venv
+
+Activar Entorno virtual
+.venv\Scripts\activate
+
+Instalar Librerias
+pip install fastapi uvicorn pydantic
+
+Generar dependencias del proyecto
+pip freeze > requirements.txt
+
+Instalar dependencias
+pip install -r requirements.txt
+
+---
+
+Ejecutar la aplicacion:
+uvicorn app.main:app --reload
+
