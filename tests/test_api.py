@@ -94,3 +94,59 @@ def test_crear_tarea_formulario(client):
     data = res_tablero.json()
     titulos = [t["titulo"] for t in data["To Do"]]
     assert "Tarea desde Formulario" in titulos
+
+def test_obtener_detalle_tarea(client, tarea_q1):
+    """GET-01: GET /tarea/{tarea_id} retorna 200 y detalles si la tarea existe."""
+    # Primero insertamos
+    client.post("/tarea/clasificar", json=tarea_q1)
+    
+    response = client.get(f"/tarea/{tarea_q1['id']}")
+    assert response.status_code == 200
+    assert response.json()["titulo"] == tarea_q1["titulo"]
+
+def test_obtener_detalle_tarea_inexistente(client):
+    """GET-02: GET /tarea/{tarea_id} retorna 404 si la tarea no existe."""
+    response = client.get("/tarea/id-inexistente-123")
+    assert response.status_code == 404
+
+def test_mover_tarea_exito(client, tarea_q1):
+    """KN-01: PUT /tarea/{tarea_id}/mover mueve la tarea y retorna 200."""
+    client.post("/tarea/clasificar", json=tarea_q1)
+    
+    response = client.put(f"/tarea/{tarea_q1['id']}/mover?nuevo_estado=In Progress")
+    assert response.status_code == 200
+    assert response.json()["estado"] == "In Progress"
+    
+    # Validar en el tablero
+    res_tablero = client.get("/tablero")
+    tablero = res_tablero.json()
+    assert any(t["id"] == tarea_q1["id"] for t in tablero["In Progress"])
+    assert not any(t["id"] == tarea_q1["id"] for t in tablero["To Do"])
+
+def test_mover_tarea_inexistente(client):
+    """KN-03: PUT /tarea/{tarea_id}/mover retorna 404 para tarea inexistente."""
+    response = client.put("/tarea/id-inexistente-123/mover?nuevo_estado=In Progress")
+    assert response.status_code == 404
+
+def test_mover_tarea_estado_invalido(client, tarea_q1):
+    """KN-04: PUT /tarea/{tarea_id}/mover retorna 422 si el estado destino no existe."""
+    client.post("/tarea/clasificar", json=tarea_q1)
+    response = client.put(f"/tarea/{tarea_q1['id']}/mover?nuevo_estado=EstadoFalso")
+    assert response.status_code == 422
+
+def test_eliminar_tarea_exito(client, tarea_q1):
+    """DEL-01: DELETE /tarea/{tarea_id} retorna 200 y remueve la tarea."""
+    client.post("/tarea/clasificar", json=tarea_q1)
+    
+    response = client.delete(f"/tarea/{tarea_q1['id']}")
+    assert response.status_code == 200
+    
+    # Verificar que no está en el tablero
+    res_tablero = client.get("/tablero")
+    tablero = res_tablero.json()
+    assert not any(t["id"] == tarea_q1["id"] for col in tablero.values() for t in col)
+
+def test_eliminar_tarea_inexistente(client):
+    """DEL-02: DELETE /tarea/{tarea_id} retorna 404 si la tarea no existe."""
+    response = client.delete("/tarea/id-inexistente-123")
+    assert response.status_code == 404

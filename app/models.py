@@ -28,5 +28,47 @@ class MatrizEisenhower:
         else:
             tarea.cuadrante = "Eliminar (Q4)"
         
+        # Evitar duplicados si la tarea ya existe en el tablero
+        for col in self.tablero_kanban.values():
+            for t in col:
+                if t.id == tarea.id:
+                    return t
+
         self.tablero_kanban["To Do"].append(tarea)
         return tarea
+
+    def obtener_tarea(self, tarea_id: str) -> Tarea | None:
+        """Busca una tarea por su ID en todas las columnas del tablero."""
+        for col in self.tablero_kanban.values():
+            for tarea in col:
+                if tarea.id == tarea_id:
+                    return tarea
+        return None
+
+    def mover_tarea(self, tarea_id: str, nuevo_estado: str) -> Tarea | None:
+        """Mueve una tarea de su columna actual a nuevo_estado si existe y el estado es válido."""
+        if nuevo_estado not in self.tablero_kanban:
+            return None
+        
+        tarea = self.obtener_tarea(tarea_id)
+        if not tarea:
+            return None
+        
+        # Eliminar de la columna actual
+        columna_actual = tarea.estado
+        self.tablero_kanban[columna_actual] = [t for t in self.tablero_kanban[columna_actual] if t.id != tarea_id]
+        
+        # Actualizar estado y agregar a la nueva columna
+        tarea.estado = nuevo_estado
+        self.tablero_kanban[nuevo_estado].append(tarea)
+        return tarea
+
+    def eliminar_tarea(self, tarea_id: str) -> bool:
+        """Elimina una tarea del tablero por su ID."""
+        tarea = self.obtener_tarea(tarea_id)
+        if not tarea:
+            return False
+        
+        columna_actual = tarea.estado
+        self.tablero_kanban[columna_actual] = [t for t in self.tablero_kanban[columna_actual] if t.id != tarea_id]
+        return True
