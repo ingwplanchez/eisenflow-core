@@ -1,10 +1,17 @@
 import pytest
 
 def test_root_endpoint(client):
-    """IA-01: GET / retorna 200 y mensaje de bienvenida."""
+    """IA-01: GET / retorna 200 y renderiza el HTML del dashboard."""
     response = client.get("/")
     assert response.status_code == 200
-    assert "message" in response.json()
+    assert "text/html" in response.headers["content-type"]
+    assert "EisenFlow" in response.text
+
+def test_health_check_endpoint(client):
+    """IA-01b: GET /api/health retorna 200 y mensaje JSON."""
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["message"] == "EisenFlow API is running. Go to /docs or /redoc for documentation."
 
 def test_clasificar_tarea_valida(client, tarea_q1):
     """IA-02: POST /tarea/clasificar con JSON válido retorna 200 y tarea con cuadrante."""
@@ -69,3 +76,21 @@ def test_response_model_tarea(client, tarea_q1):
     data = response.json()
     campos_esperados = {"id", "titulo", "urgente", "importante", "estado", "cuadrante"}
     assert campos_esperados.issubset(data.keys())
+
+def test_crear_tarea_formulario(client):
+    """F2-01: POST /crear-tarea crea una tarea usando el formulario HTML y redirige."""
+    payload = {
+        "titulo": "Tarea desde Formulario",
+        "urgente": "true",
+        "importante": "true"
+    }
+    response = client.post("/crear-tarea", data=payload, follow_redirects=False)
+    # Redirección 303 See Other
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+    
+    # Validar que se guardó en el tablero
+    res_tablero = client.get("/tablero")
+    data = res_tablero.json()
+    titulos = [t["titulo"] for t in data["To Do"]]
+    assert "Tarea desde Formulario" in titulos
