@@ -150,3 +150,44 @@ def test_eliminar_tarea_inexistente(client):
     """DEL-02: DELETE /tarea/{tarea_id} retorna 404 si la tarea no existe."""
     response = client.delete("/tarea/id-inexistente-123")
     assert response.status_code == 404
+
+def test_webhook_disparo_modo_test(client, tarea_q1, monkeypatch):
+    """WH-01: Al clasificar en entorno de test, se dispara POST a webhook-test."""
+    import requests_mock
+    monkeypatch.setenv("N8N_ENV", "test")
+    
+    with requests_mock.Mocker() as m:
+        m.post("http://localhost:5678/webhook-test/eisenhower/tasks", status_code=200)
+        
+        response = client.post("/tarea/clasificar", json=tarea_q1)
+        assert response.status_code == 200
+        assert m.called
+        
+        # Validar payload enviado
+        history = m.request_history
+        assert len(history) == 1
+        assert history[0].json()["id"] == tarea_q1["id"]
+        assert history[0].json()["cuadrante"] == "Q1"
+
+def test_webhook_disparo_modo_produccion(client, tarea_q1, monkeypatch):
+    """WH-02: Al clasificar en entorno de producción, se dispara POST a webhook (producción)."""
+    import requests_mock
+    monkeypatch.setenv("N8N_ENV", "production")
+    
+    with requests_mock.Mocker() as m:
+        m.post("http://localhost:5678/webhook/eisenhower/tasks", status_code=200)
+        
+        response = client.post("/tarea/clasificar", json=tarea_q1)
+        assert response.status_code == 200
+        assert m.called
+        assert m.request_history[0].json()["cuadrante"] == "Q1"
+
+def test_webhook_tolerancia_fallo(client, tarea_q1):
+    """WH-03: Si el webhook de n8n falla o no responde, la API no se ve afectada."""
+    import requests_mock
+    with requests_mock.Mocker() as m:
+        m.post("http://localhost:5678/webhook-test/eisenhower/tasks", status_code=500)
+        
+        # La solicitud debe ser exitosa aunque el webhook falle (graceful degradation)
+        response = client.post("/tarea/clasificar", json=tarea_q1)
+        assert response.status_code == 200

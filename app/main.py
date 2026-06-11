@@ -36,6 +36,28 @@ async def health_check():
     """Endpoint de salud del sistema."""
     return {"message": "EisenFlow API is running. Go to /docs or /redoc for documentation."}
 
+def disparar_webhook_n8n(tarea: Tarea):
+    """Envía la información de la tarea clasificada a n8n de forma tolerante a fallos."""
+    env = os.getenv("N8N_ENV", "test").lower()
+    
+    if env == "production":
+        url = "http://localhost:5678/webhook/eisenhower/tasks"
+    else:
+        url = "http://localhost:5678/webhook-test/eisenhower/tasks"
+        
+    payload = {
+        "id": tarea.id,
+        "titulo": tarea.titulo,
+        "cuadrante": tarea.cuadrante.split(" ")[-1].replace("(", "").replace(")", "")  # Extrae "Q1", "Q2", etc.
+    }
+    
+    try:
+        # Petición no bloqueante con timeout corto por si el servidor n8n no está activo
+        requests.post(url, json=payload, timeout=2.0)
+    except Exception as e:
+        # Silenciamos el error para no romper la experiencia de la API
+        print(f"[Webhook n8n Warning] No se pudo enviar el webhook a n8n: {e}")
+
 @app.post("/crear-tarea", response_class=RedirectResponse)
 async def crear_tarea_formulario(
     titulo: str = Form(...),
@@ -48,13 +70,15 @@ async def crear_tarea_formulario(
         urgente=urgente,
         importante=importante
     )
-    matriz.clasificar_tarea(nueva_tarea)
+    tarea_procesada = matriz.clasificar_tarea(nueva_tarea)
+    disparar_webhook_n8n(tarea_procesada)
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/tarea/clasificar", response_model=Tarea)
 async def crear_y_clasificar_tarea(tarea: Tarea):
      # Pasamos el JSON recibido por la infraestructura de la clase POO
      tarea_procesada = matriz.clasificar_tarea(tarea)
+     disparar_webhook_n8n(tarea_procesada)
      return tarea_procesada
 
 @app.get("/tablero")
