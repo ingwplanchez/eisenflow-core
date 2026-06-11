@@ -1,8 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict
+import uuid
 
 class Tarea(BaseModel):
-    id: int
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     titulo: str
     urgente: bool
     importante: bool

@@ -1,6 +1,9 @@
 # main.py
 from fastapi import FastAPI
-from app.models import Tarea, MatrizEisenhower 
+from app.models import Tarea, MatrizEisenhower
+import uuid
+import os
+import requests
 
 app = FastAPI(
     title="EisenFlow API Core",
