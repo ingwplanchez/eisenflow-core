@@ -191,3 +191,52 @@ def test_webhook_tolerancia_fallo(client, tarea_q1):
         # La solicitud debe ser exitosa aunque el webhook falle (graceful degradation)
         response = client.post("/tarea/clasificar", json=tarea_q1)
         assert response.status_code == 200
+
+def test_editar_tarea_exito(client, tarea_q1):
+    """EDIT-01: PUT /tarea/{tarea_id}/editar modifica los detalles de la tarea y recalcula cuadrante."""
+    import requests_mock
+    client.post("/tarea/clasificar", json=tarea_q1)
+    
+    nuevo_payload = {
+        "id": tarea_q1["id"],
+        "titulo": "Título modificado",
+        "urgente": False,
+        "importante": True
+    }
+    
+    with requests_mock.Mocker() as m:
+        m.post("http://localhost:5678/webhook-test/eisenhower/tasks", status_code=200)
+        response = client.put(f"/tarea/{tarea_q1['id']}/editar", json=nuevo_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["titulo"] == "Título modificado"
+        assert data["cuadrante"] == "Programar (Q2)"
+
+def test_editar_tarea_inexistente(client):
+    """EDIT-02: PUT /tarea/{tarea_id}/editar retorna 404 para una tarea inexistente."""
+    payload = {
+        "id": "inexistente",
+        "titulo": "No existe",
+        "urgente": False,
+        "importante": True
+    }
+    response = client.put("/tarea/id-inexistente-123/editar", json=payload)
+    assert response.status_code == 404
+
+def test_ordenacion_prioridad_cuadrante(client, tarea_q1, tarea_q2, tarea_q3, tarea_q4):
+    """SORT-01: Las tareas en el tablero deben quedar siempre ordenadas en prioridad Q1 > Q2 > Q3 > Q4."""
+    # Las clasificamos en desorden (Q4 -> Q3 -> Q2 -> Q1)
+    client.post("/tarea/clasificar", json=tarea_q4)
+    client.post("/tarea/clasificar", json=tarea_q3)
+    client.post("/tarea/clasificar", json=tarea_q2)
+    client.post("/tarea/clasificar", json=tarea_q1)
+    
+    response = client.get("/tablero")
+    tablero = response.json()
+    
+    cuadrantes_todo = [t["cuadrante"] for t in tablero["To Do"] if t["id"] in [
+        tarea_q1["id"], tarea_q2["id"], tarea_q3["id"], tarea_q4["id"]
+    ]]
+    
+    # El orden en el que se listan debe ser exactamente Q1, Q2, Q3, Q4
+    assert cuadrantes_todo == ["Hacer (Q1)", "Programar (Q2)", "Delegar (Q3)", "Eliminar (Q4)"]

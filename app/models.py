@@ -35,7 +35,19 @@ class MatrizEisenhower:
                     return t
 
         self.tablero_kanban["To Do"].append(tarea)
+        self.priorizar_columnas()
         return tarea
+
+    def priorizar_columnas(self):
+        """Ordena las tareas en cada columna por prioridad: Q1 -> Q2 -> Q3 -> Q4."""
+        peso_cuadrante = {
+            "Hacer (Q1)": 1,
+            "Programar (Q2)": 2,
+            "Delegar (Q3)": 3,
+            "Eliminar (Q4)": 4
+        }
+        for estado in self.tablero_kanban:
+            self.tablero_kanban[estado].sort(key=lambda t: peso_cuadrante.get(t.cuadrante, 99))
 
     def obtener_tarea(self, tarea_id: str) -> Tarea | None:
         """Busca una tarea por su ID en todas las columnas del tablero."""
@@ -61,6 +73,30 @@ class MatrizEisenhower:
         # Actualizar estado y agregar a la nueva columna
         tarea.estado = nuevo_estado
         self.tablero_kanban[nuevo_estado].append(tarea)
+        self.priorizar_columnas()
+        return tarea
+
+    def editar_tarea(self, tarea_id: str, titulo: str, urgente: bool, importante: bool) -> Tarea | None:
+        """Edita los atributos de una tarea y recalcula su cuadrante de Eisenhower."""
+        tarea = self.obtener_tarea(tarea_id)
+        if not tarea:
+            return None
+        
+        tarea.titulo = titulo
+        tarea.urgente = urgente
+        tarea.importante = importante
+        
+        # Recalcular cuadrante
+        if importante and urgente:
+            tarea.cuadrante = "Hacer (Q1)"
+        elif importante and not urgente:
+            tarea.cuadrante = "Programar (Q2)"
+        elif not importante and urgente:
+            tarea.cuadrante = "Delegar (Q3)"
+        else:
+            tarea.cuadrante = "Eliminar (Q4)"
+            
+        self.priorizar_columnas()
         return tarea
 
     def eliminar_tarea(self, tarea_id: str) -> bool:

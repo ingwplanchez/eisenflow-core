@@ -2,6 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
+@pytest.fixture(autouse=True)
+def limpiar_matriz():
+    """Limpia el estado de la matriz en memoria antes de cada test."""
+    from app.main import matriz
+    matriz.tablero_kanban["To Do"] = []
+    matriz.tablero_kanban["In Progress"] = []
+    matriz.tablero_kanban["Done"] = []
+
 @pytest.fixture
 def client():
     """Cliente HTTP de prueba para la API de EisenFlow."""

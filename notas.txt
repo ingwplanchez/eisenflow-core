@@ -18,3 +18,25 @@ pip install -r requirements.txt
 Ejecutar la aplicacion:
 uvicorn app.main:app --reload
 
+---
+
+N8N_ENV no está definida de forma estática en ningún archivo de configuración (como un archivo .env).
+
+En el código se lee directamente del sistema operativo mediante:
+
+env = os.getenv("N8N_ENV", "test").lower()
+
+---
+
+¿Cómo puedes cambiarla tú?
+Si deseas forzar el modo de producción o de test al ejecutar el servidor, puedes definirla en la consola antes de iniciar uvicorn:
+
+En Windows (PowerShell):
+
+$env:N8N_ENV="production"
+uvicorn app.main:app --reload
+
+En Windows (CMD / Símbolo del Sistema):
+
+set N8N_ENV=production
+uvicorn app.main:app --reload

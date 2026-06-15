@@ -114,3 +114,18 @@ async def eliminar_tarea_tablero(tarea_id: str):
     if not exito:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
     return {"message": f"Tarea con ID {tarea_id} eliminada exitosamente"}
+
+@app.put("/tarea/{tarea_id}/editar", response_model=Tarea)
+async def editar_tarea_detalle(tarea_id: str, tarea_data: Tarea):
+    """Modifica el título, urgencia e importancia de una tarea, recalculando su cuadrante y disparando webhook."""
+    from fastapi import HTTPException
+    tarea = matriz.editar_tarea(
+        tarea_id=tarea_id,
+        titulo=tarea_data.titulo,
+        urgente=tarea_data.urgente,
+        importante=tarea_data.importante
+    )
+    if not tarea:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    disparar_webhook_n8n(tarea)
+    return tarea
