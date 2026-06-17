@@ -10,10 +10,11 @@ El proyecto sigue una estructura modular y profesional de paquetes en Python:
 eisenflow-core/
 ├── app/
 │   ├── __init__.py    # Define la carpeta como paquete Python
-│   ├── templates/     # Aquí van tus archivos .html (con Jinja)
-│   ├── static/        # Aquí va tu archivo de Bootstrap (css/bootstrap.min.css)
-│   ├── main.py        # Punto de entrada de FastAPI y rutas de la API
+│   ├── templates/     # Archivos HTML y UI con Jinja2 (index.html)
+│   ├── static/        # Directorio de recursos estáticos (CSS, Bootstrap)
+│   ├── main.py        # Punto de entrada de FastAPI y rutas de la API (incluye endpoints CRUD)
 │   └── models.py      # Lógica POO (Matriz de Eisenhower y Tareas)
+├── tests/             # Suite de pruebas automatizadas (unitarias, integración y regresión)
 ├── venv/              # Entorno virtual aislado
 └── requirements.txt   # Dependencias del proyecto
 ```
@@ -22,82 +23,69 @@ eisenflow-core/
 
 * Python 3.10+: Lenguaje base del proyecto.
 * FastAPI: Framework web de alto rendimiento para construir APIs asíncronas.
-* Pydantic: Validación de datos y esquemas mediante tipos de Python.
+* Pydantic v2: Validación de datos y esquemas mediante tipos de Python.
 * Uvicorn: Servidor ASGI de alto desempeño para la ejecución del servicio.
+* Jinja2: Motor de plantillas dinámicas en backend para renderizar la UI.
+* Bootstrap 5 + Bootstrap Icons: Framework e íconos de CSS para la UI moderna y responsiva.
 
-## 📋 Funcionalidades Actuales
+## 📋 Funcionalidades Actuales (¡Completadas y Probadas!)
 
-- [x] Clasificación Automática: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer, Programar, Delegar, Eliminar) basado en urgencia e importancia.
-- [x] Tablero Kanban: Almacenamiento en memoria de las tareas organizadas por estado (To Do, In Progress, Done).
-- [x] Documentación Interactiva: Generación automática de Swagger UI (/docs) y ReDoc (/redoc).
+- [x] **Clasificación Automática**: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer Q1, Programar Q2, Delegar Q3, Eliminar Q4) basado en urgencia e importancia.
+- [x] **Tablero Kanban Dinámico**: Visualización interactiva con soporte nativo de **Drag & Drop** en el navegador para mover tareas entre columnas (*To Do*, *In Progress*, *Done*).
+- [x] **CRUD Completo vía API**: Endpoints robustos para consultar, crear, modificar y eliminar tareas en tiempo real.
+- [x] **Front-end Integrado**: Formulario intuitivo de captura y panel responsivo renderizado desde el servidor usando Jinja2.
+- [x] **Orquestación con n8n (Probado en Producción)**: Integración tolerante a fallos mediante webhooks que envía cada tarea clasificada al motor de flujos n8n para automatizar notificaciones (Slack/Telegram), eventos de Google Calendar o emails.
+- [x] **Documentación Interactiva**: Generación automática de Swagger UI (`/docs`) y ReDoc (`/redoc`).
+
+---
+
+## 🔌 Integración y Orquestación con n8n
+
+El backend de **EisenFlow Core** se conecta directamente con un flujo de trabajo automatizado en n8n alojado en el repositorio [n8n_eisenflow](https://github.com/ingwplanchez/n8n_eisenflow). Este flujo recibe cada tarea clasificada mediante un webhook y se encarga de ejecutar acciones automatizadas en distintas herramientas de productividad según el cuadrante asignado.
+
+### Características del Flujo en n8n:
+* **Ingesta Dinámica (Webhook)**: Recibe el payload de la tarea en tiempo real.
+* **Enrutamiento por Cuadrante**:
+  * **Q1 (Hacer - Urgente e Importante)**: Envía notificaciones de alerta inmediata a un canal de **Discord**.
+  * **Q2 (Programar - No Urgente pero Importante)**: Agenda automáticamente un bloque de 1 hora en **Google Calendar**.
+  * **Q3 (Delegar - Urgente pero No Importante)**: Redacta y envía un correo electrónico formal usando **Gmail** apoyado por **Google Gemini (2.5 Flash)**.
+  * **Q4 (Eliminar - No Urgente y No Importante)**: Registra los descartados en una hoja de **Google Sheets** de auditoría.
+* **Tolerancia a Fallos**: Configuración de reintentos con backoff exponencial.
+* **Manejador Global de Errores**: Captura de excepciones redirigida a Discord.
+
+### Pasos para el Uso y Configuración:
+1. **Clonar e Importar Flujos**:
+   * Descarga los flujos en formato JSON desde el repositorio [n8n_eisenflow](https://github.com/ingwplanchez/n8n_eisenflow/tree/main/workflows).
+   * Importa `eisenhower_matrix_task_orchestrator_v2.json` (flujo principal) y `eisenflow_error_handler.json` (manejador de errores) en tu instancia de n8n.
+2. **Configurar el Entorno del Microservicio**:
+   * Por defecto, la API de FastAPI se comunica con n8n usando `http://localhost:5678`.
+   * Define la variable de entorno `N8N_ENV` para alternar la URL del webhook:
+     * Si `N8N_ENV=test` (o no está definida): Envía peticiones al webhook de pruebas (`/webhook-test/eisenhower/tasks`).
+     * Si `N8N_ENV=production`: Envía peticiones al webhook de producción (`/webhook/eisenhower/tasks`).
+3. **Configurar Credenciales en n8n**:
+   * Sigue las instrucciones descritas en [n8n_eisenflow/README.md](https://github.com/ingwplanchez/n8n_eisenflow#readme) para configurar tus credenciales de Google Calendar, Gmail, Gemini API y Discord.
 
 ---
 
-## 🖥️ Interfaz de Usuario y Orquestación (En Desarrollo)
-Para mejorar la interacción del sistema y permitir una comunicación bidireccional, estamos integrando los siguientes requerimientos:
+## 🔮 Roadmap (Próximos Pasos y Mejoras)
 
-### 1. Front-end Nativo (Jinja2 + Bootstrap)
-* **Interfaz de Gestión**: Desarrollo de un Dashboard basado en HTML5, CSS y Bootstrap 5 para una visualización responsiva del tablero Kanban.
+1. **Persistencia en Base de Datos (SQLite/PostgreSQL)**
+   - Reemplazar el backend en memoria de `MatrizEisenhower` con base de datos real usando SQLAlchemy y migraciones con Alembic.
 
-* **Renderizado con Jinja2**: Implementación del motor de plantillas de Python para servir las páginas dinámicamente desde el backend de FastAPI.
+2. **Manejo de Errores y Seguridad (CORS)**
+   - Configuración de CORS y middleware de excepciones global para mejorar la robustez de las respuestas.
 
-* **Experiencia de Usuario (UX)**: Diseño de un formulario intuitivo para la entrada de tareas con validación en tiempo real.
+3. **Inteligencia Artificial (IA)**
+   - **Clasificador NLP**: Integrar un modelo de lenguaje que determine automáticamente la urgencia e importancia analizando la semántica del texto de la tarea.
 
-### 2. Orquestación de Flujos (Comunicación con n8n)
-* **Integración Webhook**: Configuración de un servicio intermedio que capture las acciones del usuario en la interfaz (como "Crear Tarea" o "Mover al Kanban") y las envíe vía POST a un webhook de n8n.
-
-* **Arquitectura de Respuesta**: Implementación de un flujo de espera (Polling/Async) donde la interfaz aguarda la confirmación del webhook de n8n para actualizar el estado del Kanban, asegurando consistencia entre la API y la automatización.
-
-### 3. Diseño del Flujo en n8n
-Imagina que cada vez que presionas "Guardar Tarea" en tu interfaz, tu API no solo la guarda, sino que le avisa a n8n. Este es el flujo que deberías montar en n8n:
-
-* **Nodo Webhook (POST)**: Recibe el JSON completo de la tarea desde tu API (id, titulo, cuadrante).
-
-- **Nodo Switch (Decisor)**: Analiza el campo cuadrante.
-
-    * **Si es "Hacer (Q1)"**: Envía una notificación inmediata a tu Telegram o Slack.
-
-    * **Si es "Programar (Q2)"**: Crea un evento automáticamente en tu Google Calendar.
-
-    * **Si es "Delegar (Q3)"**: Envía un correo electrónico pre-redactado (puedes usar un modelo de IA para redactarlo antes de enviarlo).
-
-    * **Si es "Eliminar (Q4)"** : Archiva la información en un Google Sheets de "Tareas Descartadas" (por si acaso).
-
-**Documentación**:
-* [n8n-kills: github.com](https://github.com/czlonkowski/n8n-skills)
-
-* [n8n-mcp: github.com](https://github.com/czlonkowski/n8n-mcp)
-
-* [n8n-mcp: Antigravity Setup](https://github.com/czlonkowski/n8n-mcp/blob/main/docs/ANTIGRAVITY_SETUP.md)
-
-* [Antigravity Setup: Youtube](https://youtu.be/FvSySNkkZPc?si=RLpMKrgaKKS5kQ5O)
-
-* [n8n-mcp: Claude Code Setup](https://github.com/czlonkowski/n8n-mcp/blob/main/docs/CLAUDE_CODE_SETUP.md)
-
-* [Claude Code Setup: Youtube](https://youtu.be/DPB4hdLYRc0?si=KREN_60fsfFrfIP4)
-
----
-## 🔮 Próximos Pasos y Mejoras (Roadmap)
-
-1. Integración con n8n (Pendiente de Pruebas)
-* Crear flujo en n8n
-* Integración del Webhook.
-* Arquitectura de la respuesta
-
-2. Optimización con Antigravity/Claude Code
-* Refactorización Asíncrona: Utilizar Claude Code para implementar persistencia en base de datos (SQLite/PostgreSQL) de forma asíncrona.
-* Manejo de Errores: Implementar middlewares robustos para capturar excepciones de entrada de datos.
-
-3. Inteligencia Artificial (IA)
-* Clasificador NLP: Integrar un modelo de lenguaje que determine automáticamente la urgencia e importancia analizando el texto de la tarea, eliminando la necesidad de que el usuario lo marque manualmente.
-
-4. Automatización con Antigravity (Opcional)
-* Scripts de Limpieza: Crear un proceso automático que "limpie" el cuadrante de tareas "Eliminar (Q4)" cada medianoche.
-* Reportes de Energía: Generar estadísticas semanales sobre cuántas tareas se completaron en el cuadrante de "Programar (Q2)" para medir la eficiencia preventiva.
+4. **Automatizaciones y Reportes**
+   - **Limpieza Automática**: Proceso que elimina tareas del cuadrante Q4 a medianoche de forma autónoma.
+   - **Reportes Semanales**: Estadísticas sobre productividad y tasas de completado de tareas preventivas (Q2).
 
 ---
 
 ## 🔧 Ejecución Local
+
 1. Activar el entorno virtual:
 
 ```bash
@@ -111,18 +99,21 @@ source venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 ```
 
-3. Iniciar el servidor:
+3. Iniciar el servidor de desarrollo:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
+* **Dashboard**: `http://localhost:8000/`
+* **Swagger API Docs**: `http://localhost:8000/docs`
+
 -----
 
 ## 📄 Licencia
 
-Este proyecto está bajo la licencia [MIT](https://es.wikipedia.org/wiki/Licencia_MIT), lo que permite su uso y modificación libremente, siempre que se otorgue el debido crédito.
+Este proyecto está bajo la licencia [MIT](./LICENSE) (ver archivo [LICENSE](./LICENSE) para más detalles).
 
 -----
 
-Desarrollado por Wilmer Planchez Ingeniero de Soluciones AI-Native
+Desarrollado por Wilmer Planchez — Ingeniero de Soluciones AI-Native
