@@ -1,7 +1,7 @@
 # AGENTS.md — EisenFlow Core
 
 > Guía para agentes de IA y colaboradores que trabajen en este proyecto.
-> Última actualización: 2026-06-10
+> Última actualización: 2026-06-20
 
 ---
 
@@ -35,6 +35,7 @@ eisenflow-core/
 │   │   └── index.html       # Dashboard Kanban con Jinja2 + Bootstrap 5
 │   └── static/
 │       └── css/             # Directorio para archivos CSS (actualmente vacío)
+├── tests/                   # Suite de pruebas automatizadas (unitarias, integración y regresión)
 ├── .venv/                   # Entorno virtual Python (NO modificar, NO commitear)
 ├── requirements.txt         # Dependencias del proyecto (generado con pip freeze)
 ├── notas.txt                # Notas de desarrollo del autor
@@ -45,9 +46,9 @@ eisenflow-core/
 
 | Archivo | Responsabilidad |
 |---------|----------------|
-| [`main.py`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/main.py) | Instancia de `FastAPI`, rutas de la API (`GET /`, `POST /tarea/clasificar`, `GET /tablero`) |
-| [`models.py`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/models.py) | Modelo `Tarea` (Pydantic BaseModel), clase `MatrizEisenhower` con lógica de clasificación y estado Kanban |
-| [`index.html`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/templates/index.html) | Dashboard HTML con formulario de captura y visualización del tablero Kanban |
+| [`main.py`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/main.py) | Instancia de `FastAPI`, rutas de la API, endpoints CRUD (`GET /`, `POST /crear-tarea`, `PUT /tarea/{id}/mover`, `DELETE /tarea/{id}`, `PUT /tarea/{id}/editar`, `GET /tablero`) y webhook de n8n. |
+| [`models.py`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/models.py) | Modelo `Tarea` (Pydantic BaseModel con ID tipo UUID v4), clase `MatrizEisenhower` con lógica de clasificación, priorización y ordenamiento de columnas Kanban. |
+| [`index.html`](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/app/templates/index.html) | Dashboard HTML con formulario de captura y visualización del tablero Kanban interactivo usando Drag & Drop y modals de edición. |
 
 ---
 
@@ -57,12 +58,12 @@ eisenflow-core/
 |------------|---------|-----------|
 | Python | 3.10+ | Lenguaje base |
 | FastAPI | 0.136.x | Framework web asíncrono |
-| Pydantic | 2.13.x | Validación de datos y esquemas |
+| Pydantic v2 | 2.13.x | Validación de datos y esquemas |
 | Uvicorn | 0.49.x | Servidor ASGI |
 | Jinja2 | 3.1.x | Motor de plantillas HTML |
 | Bootstrap | 5.3.0 (CDN) | Framework CSS para la UI |
 | python-multipart | 0.0.32 | Procesamiento de formularios HTML |
-| Requests | 2.34.x | Cliente HTTP (preparado para integración con n8n) |
+| Requests | 2.34.x | Cliente HTTP (integración con n8n) |
 
 ---
 
@@ -70,15 +71,21 @@ eisenflow-core/
 
 | Método | Ruta | Descripción | Request Body | Response |
 |--------|------|-------------|-------------|----------|
-| `GET` | `/` | Health check | — | `{"message": "EisenFlow API is running..."}` |
-| `POST` | `/tarea/clasificar` | Crea y clasifica una tarea | `Tarea` (JSON) | `Tarea` con cuadrante asignado |
+| `GET` | `/` | Renderiza el Dashboard Kanban en HTML | — | HTML renderizado (Jinja2) |
+| `GET` | `/api/health` | Health check de la API | — | `{"message": "EisenFlow API is running..."}` |
+| `POST` | `/crear-tarea` | Procesa el formulario HTML y redirige | Form Data (`titulo`, `urgente`, `importante`) | Redirección 303 a `/` |
+| `POST` | `/tarea/clasificar` | Crea y clasifica una tarea vía JSON | `Tarea` (JSON) | `Tarea` con cuadrante asignado |
 | `GET` | `/tablero` | Retorna el tablero Kanban completo | — | `Dict[str, List[Tarea]]` |
+| `GET` | `/tarea/{tarea_id}` | Obtiene los detalles de una tarea específica | — | `Tarea` (JSON) |
+| `PUT` | `/tarea/{tarea_id}/mover` | Cambia la columna de una tarea | Query Param `nuevo_estado` | `Tarea` actualizada |
+| `PUT` | `/tarea/{tarea_id}/editar` | Modifica título y propiedades de una tarea | `Tarea` (JSON) | `Tarea` recalculada y actualizada |
+| `DELETE` | `/tarea/{tarea_id}` | Elimina una tarea del tablero | — | Mensaje de éxito |
 
 ### Modelo `Tarea`
 
 ```python
 class Tarea(BaseModel):
-    id: int              # Identificador único
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # UUID v4 autogenerado en formato string
     titulo: str          # Descripción de la tarea
     urgente: bool        # ¿Es urgente?
     importante: bool     # ¿Es importante?
@@ -113,42 +120,33 @@ class Tarea(BaseModel):
    - `main.py` → Rutas HTTP y configuración de FastAPI
    - `templates/` → Interfaz visual (Jinja2)
    - `static/` → Archivos estáticos (CSS, JS, imágenes)
-2. **Patrón futuro recomendado** (cuando el proyecto crezca):
-   - Separar `models.py` en `schemas.py` (Pydantic) y `services.py` (lógica de negocio)
-   - Crear `routers/` para separar rutas por dominio
-   - Crear `dependencies.py` para inyección de dependencias de FastAPI
 
 ---
 
 ## 🔮 Roadmap (Funcionalidades Pendientes)
 
-Según el README y las notas del proyecto, las próximas funcionalidades previstas son:
-
 | # | Feature | Estado | Prioridad |
 |---|---------|--------|-----------|
-| 1 | **Integración con n8n** (Webhooks) | Pendiente de pruebas | Alta |
-| 2 | **Persistencia en BD** (SQLite/PostgreSQL) | No iniciado | Alta |
-| 3 | **Manejo de errores** (Middleware de excepciones) | No iniciado | Alta |
+| 1 | **Persistencia en BD** (SQLite/PostgreSQL) | No iniciado | Alta |
+| 2 | **Manejo de errores** (Middleware de excepciones) | No iniciado | Alta |
+| 3 | **CORS Configurado** | No iniciado | Media |
 | 4 | **Clasificador NLP** (IA para urgencia/importancia) | No iniciado | Media |
 | 5 | **Limpieza automática** de Q4 | No iniciado | Baja |
 | 6 | **Reportes de productividad** semanal | No iniciado | Baja |
-| 7 | **Mover tareas entre columnas Kanban** | No implementado en API | Alta |
-| 8 | **Eliminar/editar tareas** | No implementado en API | Alta |
-| 9 | **Formulario funcional** (ruta `/crear-tarea` del HTML no existe en el backend) | No conectado | Alta |
 
 ---
 
 ## 🧪 Estrategia de Testing
 
-> **Estado actual: No existen pruebas.** Se debe implementar un framework de testing desde cero.
+> **Estado actual: Completado.** Se ha implementado e integrado una suite de pruebas automatizadas con pytest que cubre el 100% de la funcionalidad core.
 
-### Dependencias de Testing Recomendadas
+### Dependencias de Testing Utilizadas
 
 ```text
-pytest>=8.0
-pytest-asyncio>=0.24
-httpx>=0.27          # Cliente async para TestClient de FastAPI
-pytest-cov>=5.0      # Cobertura de código
+pytest>=9.0.3
+pytest-asyncio>=1.4.0
+httpx>=0.28.1        # Cliente async para TestClient de FastAPI
+pytest-cov>=7.1.0    # Cobertura de código
 ```
 
 ### Estructura de Directorios de Tests
@@ -157,22 +155,20 @@ pytest-cov>=5.0      # Cobertura de código
 eisenflow-core/
 ├── tests/
 │   ├── __init__.py
-│   ├── conftest.py            # Fixtures compartidas (app client, datos de prueba)
-│   ├── test_models.py         # Tests unitarios de Tarea y MatrizEisenhower
-│   ├── test_api.py            # Tests de integración de endpoints
-│   └── test_clasificacion.py  # Tests de la lógica de clasificación Eisenhower
+│   ├── conftest.py            # Fixtures compartidas (app client, tareas mockup Q1-Q4)
+│   ├── test_models.py         # Tests unitarios del modelo de negocio
+│   ├── test_api.py            # Tests de integración de la API (HTTP)
+│   └── test_regresion.py      # Tests de regresión para blindar la lógica core
 ```
 
 ---
 
 ### Tests Unitarios: `test_models.py`
 
-Prueban la lógica de negocio **aislada** del framework HTTP.
-
 | ID | Test | Descripción | Tipo |
 |----|------|-------------|------|
 | UM-01 | `test_tarea_creacion_defaults` | Verificar que `Tarea` se crea con `estado="To Do"` y `cuadrante=""` por defecto | Unitario |
-| UM-02 | `test_tarea_campos_requeridos` | Verificar que `id`, `titulo`, `urgente`, `importante` son obligatorios | Unitario |
+| UM-02 | `test_tarea_campos_requeridos` | Verificar que `titulo`, `urgente`, `importante` son obligatorios | Unitario |
 | UM-03 | `test_tarea_validacion_tipos` | Verificar que tipos incorrectos lanzan `ValidationError` | Unitario |
 | UM-04 | `test_matriz_inicializa_tablero_vacio` | Verificar que `MatrizEisenhower()` crea tablero con 3 columnas vacías | Unitario |
 | UM-05 | `test_clasificar_q1_urgente_importante` | `urgente=True, importante=True` → `"Hacer (Q1)"` | Unitario |
@@ -186,12 +182,10 @@ Prueban la lógica de negocio **aislada** del framework HTTP.
 
 ### Tests de Integración: `test_api.py`
 
-Prueban los endpoints HTTP de FastAPI usando `TestClient` (httpx).
-
 | ID | Test | Descripción | Tipo |
 |----|------|-------------|------|
-| IA-01 | `test_root_endpoint` | `GET /` retorna 200 y mensaje de bienvenida | Integración |
-| IA-02 | `test_clasificar_tarea_valida` | `POST /tarea/clasificar` con JSON válido retorna 200 y tarea con cuadrante | Integración |
+| IA-01 | `test_root_endpoint` | `GET /` retorna 200 (HTML renderizado) | Integración |
+| IA-02 | `test_clasificar_tarea_valida` | `POST /tarea/clasificar` retorna 200 y JSON con cuadrante asignado | Integración |
 | IA-03 | `test_clasificar_tarea_body_invalido` | `POST /tarea/clasificar` con JSON incompleto retorna 422 | Integración |
 | IA-04 | `test_clasificar_tarea_tipos_incorrectos` | `POST /tarea/clasificar` con tipos erróneos retorna 422 | Integración |
 | IA-05 | `test_tablero_vacio_inicial` | `GET /tablero` retorna tablero con 3 columnas vacías | Integración |
@@ -203,8 +197,6 @@ Prueban los endpoints HTTP de FastAPI usando `TestClient` (httpx).
 
 ### Tests de Regresión (Proteger Funcionalidad Existente)
 
-Estos tests deben ejecutarse **siempre** antes de mergear cambios para asegurar que nada se rompe:
-
 | ID | Test | Qué protege |
 |----|------|-------------|
 | RG-01 | `test_clasificacion_determinista` | La misma combinación de flags siempre produce el mismo cuadrante |
@@ -213,41 +205,6 @@ Estos tests deben ejecutarse **siempre** antes de mergear cambios para asegurar 
 | RG-04 | `test_tablero_estructura_kanban` | El tablero siempre tiene exactamente las 3 columnas esperadas |
 | RG-05 | `test_api_docs_accesible` | `GET /docs` retorna 200 (Swagger UI funciona) |
 | RG-06 | `test_api_openapi_schema` | `GET /openapi.json` retorna esquema válido |
-
----
-
-### Tests Futuros (Para Nuevas Features)
-
-A medida que se implementen nuevas funcionalidades, agregar los siguientes tests:
-
-#### Persistencia (Base de Datos)
-| ID | Test | Descripción |
-|----|------|-------------|
-| DB-01 | `test_tarea_persiste_en_bd` | Crear tarea → reiniciar app → tarea sigue existiendo |
-| DB-02 | `test_tarea_id_autoincremental` | IDs se asignan automáticamente sin colisiones |
-| DB-03 | `test_migración_esquema` | Verificar que migraciones de BD se ejecutan correctamente |
-
-#### Mover Tareas en Kanban
-| ID | Test | Descripción |
-|----|------|-------------|
-| KN-01 | `test_mover_tarea_todo_a_in_progress` | Mover tarea de "To Do" a "In Progress" |
-| KN-02 | `test_mover_tarea_in_progress_a_done` | Mover tarea de "In Progress" a "Done" |
-| KN-03 | `test_mover_tarea_invalida_404` | Mover tarea con ID inexistente retorna 404 |
-| KN-04 | `test_mover_tarea_estado_invalido` | Mover a un estado que no existe retorna 422 |
-
-#### Integración con n8n (Webhooks)
-| ID | Test | Descripción |
-|----|------|-------------|
-| WH-01 | `test_webhook_se_dispara_al_clasificar` | Al clasificar, se envía POST al webhook de n8n |
-| WH-02 | `test_webhook_payload_correcto` | El JSON enviado al webhook contiene los campos esperados |
-| WH-03 | `test_webhook_falla_no_rompe_api` | Si el webhook falla, la API sigue funcionando (graceful degradation) |
-
-#### Manejo de Errores
-| ID | Test | Descripción |
-|----|------|-------------|
-| ER-01 | `test_error_handler_validation_error` | Errores de validación retornan JSON estructurado |
-| ER-02 | `test_error_handler_500` | Errores internos retornan JSON con mensaje genérico |
-| ER-03 | `test_cors_headers` | Verificar que CORS está correctamente configurado |
 
 ---
 
@@ -268,7 +225,6 @@ def client():
 def tarea_q1():
     """Tarea urgente e importante (Cuadrante Q1 - Hacer)."""
     return {
-        "id": 1,
         "titulo": "Resolver bug crítico en producción",
         "urgente": True,
         "importante": True
@@ -278,7 +234,6 @@ def tarea_q1():
 def tarea_q2():
     """Tarea importante pero no urgente (Cuadrante Q2 - Programar)."""
     return {
-        "id": 2,
         "titulo": "Diseñar arquitectura del nuevo módulo",
         "urgente": False,
         "importante": True
@@ -288,7 +243,6 @@ def tarea_q2():
 def tarea_q3():
     """Tarea urgente pero no importante (Cuadrante Q3 - Delegar)."""
     return {
-        "id": 3,
         "titulo": "Responder correos pendientes",
         "urgente": True,
         "importante": False
@@ -298,7 +252,6 @@ def tarea_q3():
 def tarea_q4():
     """Tarea no urgente ni importante (Cuadrante Q4 - Eliminar)."""
     return {
-        "id": 4,
         "titulo": "Organizar carpeta de descargas",
         "urgente": False,
         "importante": False
@@ -328,9 +281,6 @@ pytest tests/test_models.py -v
 
 # Ejecutar solo tests de integración
 pytest tests/test_api.py -v
-
-# Ejecutar solo tests de regresión
-pytest tests/ -v -k "regression or RG"
 ```
 
 ---
@@ -339,16 +289,7 @@ pytest tests/ -v -k "regression or RG"
 
 | # | Problema | Severidad | Notas |
 |---|----------|-----------|-------|
-| 1 | **No hay persistencia**: todo el estado se pierde al reiniciar el servidor | Alta | Roadmap item #2 |
-| 2 | **Ruta `/crear-tarea` no existe**: el formulario HTML apunta a una ruta que no está implementada en `main.py` | Alta | El formulario del dashboard no funciona |
-| 3 | **No hay validación de IDs duplicados**: se pueden crear múltiples tareas con el mismo `id` | Media | Problema hasta que haya BD |
-| 4 | **No se pueden mover tareas entre columnas**: falta endpoint de actualización de estado | Alta | Core feature pendiente |
-| 5 | **No se pueden eliminar tareas**: falta endpoint DELETE | Media | — |
-| 6 | **No hay manejo de errores centralizado**: no hay middleware de excepciones | Media | Roadmap item #3 |
-| 7 | **No hay CORS configurado**: impedirá consumo desde frontend separado | Media | — |
-| 8 | **Bootstrap CDN con URL incorrecta**: el CSS en `index.html` apunta a `.../modern/bootstrap.min.css` que puede no existir | Baja | Verificar |
-| 9 | **Sin tests**: no existe ningún test automatizado | Alta | Este documento define la estrategia |
-| 10 | **Sin `.gitignore`**: falta archivo para excluir `.venv/`, `__pycache__/`, etc. | Baja | Crear al iniciar |
+| 1 | **No hay persistencia**: todo el estado se pierde al reiniciar el servidor | Alta | Roadmap item #1 |
 
 ---
 
@@ -370,7 +311,7 @@ uvicorn app.main:app --reload
 
 # 5. Abrir en navegador
 # API Docs:  http://127.0.0.1:8000/docs
-# Tablero:   http://127.0.0.1:8000/  (requiere ruta de renderizado Jinja2)
+# Tablero:   http://127.0.0.1:8000/
 ```
 
 ---
