@@ -30,12 +30,12 @@ eisenflow-core/
 
 ## 📋 Funcionalidades Actuales (¡Completadas y Probadas!)
 
-- **Clasificación Automática**: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer Q1, Programar Q2, Delegar Q3, Eliminar Q4) basado en urgencia e importancia.
-- **Tablero Kanban Dinámico**: Visualización interactiva con soporte nativo de **Drag & Drop** en el navegador para mover tareas entre columnas (*To Do*, *In Progress*, *Done*).
-- **CRUD Completo vía API**: Endpoints robustos para consultar, crear, modificar y eliminar tareas en tiempo real.
-- **Front-end Integrado**: Formulario intuitivo de captura y panel responsivo renderizado desde el servidor usando Jinja2.
-- **Orquestación con n8n (Probado en Producción)**: Integración tolerante a fallos mediante webhooks que envía cada tarea clasificada al motor de flujos n8n para automatizar notificaciones (Slack/Telegram), eventos de Google Calendar o emails.
-- **Documentación Interactiva**: Generación automática de Swagger UI (`/docs`) y ReDoc (`/redoc`).
+- [x] **Clasificación Automática**: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer Q1, Programar Q2, Delegar Q3, Eliminar Q4) basado en urgencia e importancia.
+- [x] **Tablero Kanban Dinámico**: Visualización interactiva con soporte nativo de **Drag & Drop** en el navegador para mover tareas entre columnas (*To Do*, *In Progress*, *Done*).
+- [x] **CRUD Completo vía API**: Endpoints robustos para consultar, crear, modificar y eliminar tareas en tiempo real.
+- [x] **Front-end Integrado**: Formulario intuitivo de captura y panel responsivo renderizado desde el servidor usando Jinja2.
+- [x] **Orquestación con n8n (Probado en Producción)**: Integración tolerante a fallos mediante webhooks que envía cada tarea clasificada al motor de flujos n8n para automatizar notificaciones (Slack/Telegram), eventos de Google Calendar o emails.
+- [x] **Documentación Interactiva**: Generación automática de Swagger UI (`/docs`) y ReDoc (`/redoc`).
 
 ---
 ## 📸 Capturas de Pantalla
@@ -122,6 +122,58 @@ uvicorn app.main:app --reload
 
 * **Dashboard**: `http://localhost:8000/`
 * **Swagger API Docs**: `http://localhost:8000/docs`
+
+---
+
+## Variable de Entorno N8N_ENV
+
+**N8N_ENV** no está definida de forma estática en ningún archivo de configuración (como un archivo .env).
+
+En el código se lee directamente del sistema operativo mediante:
+
+```python
+env = os.getenv("N8N_ENV", "test").lower()
+```
+
+### ¿Cómo puedes cambiarla tú?
+
+Si deseas forzar el modo de producción o de test al ejecutar el servidor, puedes definirla en la consola antes de iniciar uvicorn:
+
+### En Windows (PowerShell):
+
+```powershell
+$env:N8N_ENV="production"
+uvicorn app.main:app --reload
+```
+
+### En Windows (CMD / Símbolo del Sistema):
+
+```cmd
+set N8N_ENV=production
+uvicorn app.main:app --reload
+```
+
+---
+
+## 🧪 Pruebas Automatizadas (Testing)
+
+El proyecto cuenta con una suite de pruebas automatizadas utilizando `pytest`. Las pruebas se dividen en tres áreas clave dentro del directorio [tests](file:///c:/Users/USER/Documents/wplanchez/Portafolio/Repositorios/FastAPI/eisenflow-core/tests):
+
+*   **Unitarias (`test_models.py`)**: Validan la lógica del modelo de negocio en `models.py` de forma aislada.
+*   **Integración (`test_api.py`)**: Validan los endpoints HTTP de FastAPI y las respuestas de la API utilizando `TestClient`.
+*   **Regresión (`test_regresion.py`)**: Protegen el funcionamiento core existente (estructura Kanban, consistencia de cuadrantes, accesibilidad a docs, etc.).
+
+### Ejecución de Pruebas
+
+Para ejecutar las pruebas locales, asegúrate de activar el entorno virtual y luego ejecuta:
+
+```bash
+# Ejecutar todas las pruebas en modo detallado
+pytest tests/ -v
+
+# Ejecutar con reporte de cobertura de código
+pytest tests/ --cov=app --cov-report=term-missing
+```
 
 -----
 
