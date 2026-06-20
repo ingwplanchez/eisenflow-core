@@ -30,14 +30,29 @@ eisenflow-core/
 
 ## 📋 Funcionalidades Actuales (¡Completadas y Probadas!)
 
-- [x] **Clasificación Automática**: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer Q1, Programar Q2, Delegar Q3, Eliminar Q4) basado en urgencia e importancia.
-- [x] **Tablero Kanban Dinámico**: Visualización interactiva con soporte nativo de **Drag & Drop** en el navegador para mover tareas entre columnas (*To Do*, *In Progress*, *Done*).
-- [x] **CRUD Completo vía API**: Endpoints robustos para consultar, crear, modificar y eliminar tareas en tiempo real.
-- [x] **Front-end Integrado**: Formulario intuitivo de captura y panel responsivo renderizado desde el servidor usando Jinja2.
-- [x] **Orquestación con n8n (Probado en Producción)**: Integración tolerante a fallos mediante webhooks que envía cada tarea clasificada al motor de flujos n8n para automatizar notificaciones (Slack/Telegram), eventos de Google Calendar o emails.
-- [x] **Documentación Interactiva**: Generación automática de Swagger UI (`/docs`) y ReDoc (`/redoc`).
+- **Clasificación Automática**: Algoritmo que asigna tareas a los cuadrantes de Eisenhower (Hacer Q1, Programar Q2, Delegar Q3, Eliminar Q4) basado en urgencia e importancia.
+- **Tablero Kanban Dinámico**: Visualización interactiva con soporte nativo de **Drag & Drop** en el navegador para mover tareas entre columnas (*To Do*, *In Progress*, *Done*).
+- **CRUD Completo vía API**: Endpoints robustos para consultar, crear, modificar y eliminar tareas en tiempo real.
+- **Front-end Integrado**: Formulario intuitivo de captura y panel responsivo renderizado desde el servidor usando Jinja2.
+- **Orquestación con n8n (Probado en Producción)**: Integración tolerante a fallos mediante webhooks que envía cada tarea clasificada al motor de flujos n8n para automatizar notificaciones (Slack/Telegram), eventos de Google Calendar o emails.
+- **Documentación Interactiva**: Generación automática de Swagger UI (`/docs`) y ReDoc (`/redoc`).
 
 ---
+## 📸 Capturas de Pantalla
+
+A continuación se muestra la interfaz de **EisenFlow Core** en acción, gestionando el flujo de trabajo y la automatización:
+
+### 📋 Vista del Tablero Kanban
+![Tablero Kanban de EisenFlow Core con columnas To Do, In Progress y Done](screenshots/eisenflow-core-view.jpg)
+
+### ✏️ Formulario de Edición de Tareas
+![Ventana modal de edición para modificar título, urgencia e importancia de una tarea](screenshots/eisenflow-edit-view.jpg)
+
+### ⚙️ Orquestación y Flujo de Trabajo en n8n
+![Diseño del flujo automatizado en n8n que recibe y procesa las tareas según su cuadrante](screenshots/n8n-eisenflow-view.jpg)
+
+---
+
 
 ## 🔌 Integración y Orquestación con n8n
 
